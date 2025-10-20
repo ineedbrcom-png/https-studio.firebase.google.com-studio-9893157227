@@ -419,6 +419,32 @@ def handle_create_task(request: RequestContext, response: ResponseBuilder) -> No
     response.send_json(_row_to_dict(task_row), status=HTTPStatus.CREATED)
 
 
+@route("GET", "/api/projects/:project_id/tasks")
+@require_auth
+def handle_list_tasks(request: RequestContext, response: ResponseBuilder) -> None:
+    project_id = int(request.path_params["project_id"])
+    user_id = int(request.user["id"])
+    with database.get_connection() as conn:
+        _require_project_access(conn, project_id, user_id)
+        tasks = [
+            {
+                "id": row["id"],
+                "title": row["title"],
+                "description": row["description"],
+                "status": row["status"],
+                "due_date": row["due_date"],
+                "assignee_id": row["assignee_id"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+            }
+            for row in conn.execute(
+                "SELECT * FROM tasks WHERE project_id = ? ORDER BY created_at DESC",
+                (project_id,),
+            )
+        ]
+    response.send_json({"tasks": tasks})
+
+
 @route("PATCH", "/api/tasks/:task_id")
 @require_auth
 def handle_update_task(request: RequestContext, response: ResponseBuilder) -> None:
@@ -476,6 +502,28 @@ def handle_update_task(request: RequestContext, response: ResponseBuilder) -> No
     response.send_json(_row_to_dict(task_row))
 
 
+@route("DELETE", "/api/tasks/:task_id")
+@require_auth
+def handle_delete_task(request: RequestContext, response: ResponseBuilder) -> None:
+    task_id = int(request.path_params["task_id"])
+    user_id = int(request.user["id"])
+    with database.get_connection() as conn:
+        task_row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+        if not task_row:
+            raise HttpError.not_found("Tarefa não encontrada.")
+        project_id = task_row["project_id"]
+        _require_project_access(conn, project_id, user_id)
+        conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+        _log_activity(
+            conn,
+            project_id,
+            user_id,
+            "task_deleted",
+            json.dumps({"task_id": task_id}),
+        )
+    response.send_no_content()
+
+
 @route("POST", "/api/projects/:project_id/assets")
 @require_auth
 def handle_create_asset(request: RequestContext, response: ResponseBuilder) -> None:
@@ -526,6 +574,28 @@ def handle_list_assets(request: RequestContext, response: ResponseBuilder) -> No
             )
         ]
     response.send_json({"assets": assets})
+
+
+@route("DELETE", "/api/assets/:asset_id")
+@require_auth
+def handle_delete_asset(request: RequestContext, response: ResponseBuilder) -> None:
+    asset_id = int(request.path_params["asset_id"])
+    user_id = int(request.user["id"])
+    with database.get_connection() as conn:
+        asset_row = conn.execute("SELECT * FROM assets WHERE id = ?", (asset_id,)).fetchone()
+        if not asset_row:
+            raise HttpError.not_found("Arquivo não encontrado.")
+        project_id = asset_row["project_id"]
+        _require_project_access(conn, project_id, user_id)
+        conn.execute("DELETE FROM assets WHERE id = ?", (asset_id,))
+        _log_activity(
+            conn,
+            project_id,
+            user_id,
+            "asset_deleted",
+            json.dumps({"asset_id": asset_id}),
+        )
+    response.send_no_content()
 
 
 @route("POST", "/api/projects/:project_id/members")
