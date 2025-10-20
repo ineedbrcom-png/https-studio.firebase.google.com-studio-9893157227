@@ -7,6 +7,7 @@ import tempfile
 import threading
 import time
 import unittest
+from http import HTTPStatus
 from pathlib import Path
 
 os.environ.setdefault("JWT_SECRET", "test-secret")
@@ -100,6 +101,15 @@ class StudioBackendIntegrationTest(unittest.TestCase):
         task_id = task["id"]
         self.assertEqual(task["status"], "in_progress")
 
+        status, task_list = _request(
+            "GET",
+            f"/api/projects/{project_id}/tasks",
+            token=token,
+            port=self.port,
+        )
+        self.assertEqual(status, 200, task_list)
+        self.assertEqual(len(task_list["tasks"]), 1)
+
         status, updated_task = _request(
             "PATCH",
             f"/api/tasks/{task_id}",
@@ -118,6 +128,7 @@ class StudioBackendIntegrationTest(unittest.TestCase):
             port=self.port,
         )
         self.assertEqual(status, 201, asset)
+        asset_id = asset["id"]
 
         status, project_detail = _request(
             "GET",
@@ -128,6 +139,40 @@ class StudioBackendIntegrationTest(unittest.TestCase):
         self.assertEqual(status, 200, project_detail)
         self.assertEqual(len(project_detail["tasks"]), 1)
         self.assertEqual(len(project_detail["assets"]), 1)
+
+        status, _ = _request(
+            "DELETE",
+            f"/api/tasks/{task_id}",
+            token=token,
+            port=self.port,
+        )
+        self.assertEqual(status, HTTPStatus.NO_CONTENT)
+
+        status, task_list_after_delete = _request(
+            "GET",
+            f"/api/projects/{project_id}/tasks",
+            token=token,
+            port=self.port,
+        )
+        self.assertEqual(status, 200, task_list_after_delete)
+        self.assertEqual(len(task_list_after_delete["tasks"]), 0)
+
+        status, _ = _request(
+            "DELETE",
+            f"/api/assets/{asset_id}",
+            token=token,
+            port=self.port,
+        )
+        self.assertEqual(status, HTTPStatus.NO_CONTENT)
+
+        status, assets_after_delete = _request(
+            "GET",
+            f"/api/projects/{project_id}/assets",
+            token=token,
+            port=self.port,
+        )
+        self.assertEqual(status, 200, assets_after_delete)
+        self.assertEqual(len(assets_after_delete["assets"]), 0)
 
         status, activity = _request(
             "GET",

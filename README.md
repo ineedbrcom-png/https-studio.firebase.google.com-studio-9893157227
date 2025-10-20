@@ -74,9 +74,12 @@ curl -X POST http://localhost:8000/api/projects \
 | `PUT` | `/api/projects/:project_id` | Atualiza dados do projeto (somente proprietário). |
 | `DELETE` | `/api/projects/:project_id` | Remove projeto (somente proprietário). |
 | `POST` | `/api/projects/:project_id/tasks` | Cria tarefa associada ao projeto. |
+| `GET` | `/api/projects/:project_id/tasks` | Lista tarefas do projeto. |
 | `PATCH` | `/api/tasks/:task_id` | Atualiza atributos da tarefa. |
+| `DELETE` | `/api/tasks/:task_id` | Remove uma tarefa existente. |
 | `POST` | `/api/projects/:project_id/assets` | Anexa novo ativo ao projeto. |
 | `GET` | `/api/projects/:project_id/assets` | Lista ativos do projeto. |
+| `DELETE` | `/api/assets/:asset_id` | Remove um ativo do projeto. |
 | `POST` | `/api/projects/:project_id/members` | Adiciona membro existente ao projeto (somente proprietário). |
 | `GET` | `/api/activity` | Feed de atividades relevantes ao usuário. |
 | `GET` | `/health` | Verificação simples de saúde. |
